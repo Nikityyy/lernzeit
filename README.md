@@ -1,6 +1,6 @@
 # Lernzeit
 
-I study with Spotify playing and used the Windows Clock app to time it. Two things bothered me. The Clock app shows one number and no history, so I never knew how much I studied this week. And when I paused the music for a break, I often forgot to pause the clock, so the time was wrong.
+I study with Spotify playing and used the focus sessions in the Windows Clock app to time it. Two things bothered me. The Clock app shows little more than today's total, so I never knew how much I studied this week. And when I paused the music for a break, I often forgot to pause the clock, so the time was wrong.
 
 Lernzeit is a study timer that follows Spotify. Pause the music and the timer pauses at the same second. Play it again and the timer goes on. It keeps every session and shows how much you studied per day, week, month and year, at what time of day, and which songs, artists and podcasts you listened to while studying.
 
@@ -28,7 +28,7 @@ Press the red button or the space bar to start a session. Lernzeit never starts 
 
 A study day ends at 4:00 in the morning, so a session past midnight counts for the day you started it. Spotify Free ads are not counted as music.
 
-On first launch, Lernzeit adds the time from the Windows Clock stopwatch as one session, so the time you already tracked is not lost.
+On first launch, Lernzeit takes over every focus session (Fokussitzung) recorded in the Windows Clock app, so the time you already tracked is not lost. Close the Clock app first: while it is open, Windows locks its data, and Lernzeit tries again on the next launch.
 
 ## How it works
 

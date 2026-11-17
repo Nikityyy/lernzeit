@@ -34,8 +34,10 @@ fn main() -> eframe::Result {
     let mut store = store::Store::open();
     if !store.settings.clock_imported {
         match clock::import() {
-            clock::Import::Found(study) => {
-                store.add_study(study);
+            clock::Import::Found(studies) => {
+                for study in studies {
+                    store.add_study(study);
+                }
                 store.settings.clock_imported = true;
             }
             clock::Import::Nothing => store.settings.clock_imported = true,

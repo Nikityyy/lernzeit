@@ -20,7 +20,7 @@ pub type Ms = i64;
 pub struct Study {
     pub start: Ms,
     pub end: Ms,
-    /// Taken over from the Windows Clock stopwatch.
+    /// Taken over from the focus sessions of the Windows Clock app.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub imported: bool,
 }
