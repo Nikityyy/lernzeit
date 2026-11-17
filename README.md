@@ -13,9 +13,13 @@ The app is in German.
 
 ## Install
 
-Windows 10 or 11. Download `Lernzeit.exe` from the [latest release](https://github.com/Nikityyy/lernzeit/releases/latest) and run it. There is no installer. It keeps its data in `%APPDATA%\Lernzeit`.
+Windows 10 or 11 (64-bit). Download `Lernzeit-Setup-0.1.1.exe` from the [latest release](https://github.com/Nikityyy/lernzeit/releases/latest) and open it. It installs for your Windows account, adds Lernzeit to the Start menu, and offers a desktop shortcut. It needs no admin password or internet connection.
 
-To build it yourself, install [Rust](https://rustup.rs) and run `cargo build --release`.
+To update, quit Lernzeit from its tray menu and run the newer installer. Your history stays in `%APPDATA%\Lernzeit`. Uninstalling removes the app and shortcuts but keeps that history.
+
+The installer is not code-signed yet, so Windows may show an unknown-publisher or SmartScreen warning. The release includes a SHA-256 checksum. `Lernzeit.exe` is also available if you prefer to run it without installing.
+
+To build it yourself, install [Rust](https://rustup.rs) with the Windows MSVC build tools and run `cargo build --release --locked`. To build the installer, also install [Inno Setup 7](https://jrsoftware.org/inno-setup/downloads) and run `powershell -File .\build-installer.ps1`.
 
 ## Use
 
