@@ -23,6 +23,8 @@ impl Tray {
         let show = {
             let ctx = ctx.clone();
             move || {
+                // Clear any close request left by the previous hide-to-tray cycle.
+                ctx.send_viewport_cmd(ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(ViewportCommand::Visible(true));
                 ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
                 ctx.send_viewport_cmd(ViewportCommand::Focus);

@@ -20,7 +20,7 @@ use windows::Storage::Streams::DataReader;
 
 /// A stop must last this long before the timer pauses; a track change can look like a
 /// short stop.
-const SETTLE: Ms = 1500;
+const SETTLE: Ms = 250;
 const RESCAN: Duration = Duration::from_secs(3);
 
 enum Wake {
@@ -84,17 +84,9 @@ fn run(core: Arc<Mutex<Core>>, tx: Sender<Wake>, rx: Receiver<Wake>, changed: im
         let now = now();
         let status = session.as_ref().and_then(|(s, _)| s.GetPlaybackInfo().ok()?.PlaybackStatus().ok());
         let is_playing = status == Some(Status::Playing);
-        let new_track = session.as_ref().and_then(|(s, _)| read_track(s));
         {
             let mut core = core.lock().unwrap();
             core.spotify_found = session.is_some();
-            if new_track != track {
-                if let (Some(t), Some((s, _))) = (&new_track, &session) {
-                    save_cover(s, &core.store.cover_path(&t.cover_key()));
-                }
-                track = new_track.clone();
-                core.spotify_track(new_track, now);
-            }
             if is_playing {
                 stopped_at = None;
                 if !playing {
@@ -110,7 +102,21 @@ fn run(core: Arc<Mutex<Core>>, tx: Sender<Wake>, rx: Receiver<Wake>, changed: im
                 }
             }
         }
+        // Playback state drives the timer icon. Publish it before asking Windows for
+        // media properties, whose async join can take noticeably longer to complete.
         changed();
+
+        let new_track = session.as_ref().and_then(|(s, _)| read_track(s));
+        if new_track != track {
+            let mut core = core.lock().unwrap();
+            if let (Some(t), Some((s, _))) = (&new_track, &session) {
+                save_cover(s, &core.store.cover_path(&t.cover_key()));
+            }
+            track = new_track.clone();
+            core.spotify_track(new_track, now);
+            drop(core);
+            changed();
+        }
 
         let wait = if stopped_at.is_some() { Duration::from_millis(SETTLE as u64 / 3) } else { RESCAN };
         match rx.recv_timeout(wait) {

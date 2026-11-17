@@ -13,7 +13,7 @@ The app is in German.
 
 ## Install
 
-Windows 10 or 11 (64-bit). Download `Lernzeit-Setup-0.1.2.exe` from the [latest release](https://github.com/Nikityyy/lernzeit/releases/latest) and open it. It installs for your Windows account, adds Lernzeit to the Start menu, and offers a desktop shortcut. It needs no admin password or internet connection.
+Windows 10 or 11 (64-bit). Download the latest `Lernzeit-Setup` from the [releases page](https://github.com/Nikityyy/lernzeit/releases/latest) and open it. It installs for your Windows account, adds Lernzeit to the Start menu, and offers a desktop shortcut. It needs no admin password or internet connection.
 
 To update, quit Lernzeit from its tray menu and run the newer installer. Your history stays in `%APPDATA%\Lernzeit`. Uninstalling removes the app and shortcuts but keeps that history.
 
