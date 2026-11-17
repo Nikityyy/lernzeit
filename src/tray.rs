@@ -22,14 +22,7 @@ impl Tray {
 
         let show = {
             let ctx = ctx.clone();
-            move || {
-                // Clear any close request left by the previous hide-to-tray cycle.
-                ctx.send_viewport_cmd(ViewportCommand::CancelClose);
-                ctx.send_viewport_cmd(ViewportCommand::Visible(true));
-                ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
-                ctx.send_viewport_cmd(ViewportCommand::Focus);
-                ctx.request_repaint();
-            }
+            move || restore_window(&ctx)
         };
         let on_click = show.clone();
         TrayIconEvent::set_event_handler(Some(move |event| {
@@ -68,4 +61,13 @@ impl Tray {
             let _ = icon.set_tooltip(Some(text));
         }
     }
+}
+
+pub fn restore_window(ctx: &egui::Context) {
+    // Clear any close request left by the previous hide-to-tray cycle.
+    ctx.send_viewport_cmd(ViewportCommand::CancelClose);
+    ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+    ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+    ctx.send_viewport_cmd(ViewportCommand::Focus);
+    ctx.request_repaint();
 }

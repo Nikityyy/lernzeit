@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Milliseconds since the Unix epoch.
 pub type Ms = i64;
@@ -105,7 +105,7 @@ impl Store {
         store
     }
 
-    pub fn dir(&self) -> &PathBuf {
+    pub fn dir(&self) -> &Path {
         &self.dir
     }
 
@@ -144,7 +144,7 @@ impl Store {
     }
 }
 
-fn read_lines<T: for<'de> Deserialize<'de>>(path: &PathBuf) -> Vec<T> {
+fn read_lines<T: for<'de> Deserialize<'de>>(path: &Path) -> Vec<T> {
     let Ok(file) = fs::File::open(path) else { return Vec::new() };
     BufReader::new(file)
         .lines()
@@ -153,7 +153,7 @@ fn read_lines<T: for<'de> Deserialize<'de>>(path: &PathBuf) -> Vec<T> {
         .collect()
 }
 
-fn append<T: Serialize>(path: &PathBuf, value: &T) {
+fn append<T: Serialize>(path: &Path, value: &T) {
     let Ok(mut line) = serde_json::to_string(value) else { return };
     line.push('\n');
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {

@@ -12,23 +12,26 @@ mod theme;
 mod tray;
 
 use std::sync::{Arc, Mutex};
-use windows::core::w;
-use windows::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS};
-use windows::Win32::System::Threading::CreateMutexW;
-use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW};
+use windows::core::{w, PCWSTR};
+use windows::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ALREADY_EXISTS};
+use windows::Win32::System::Threading::{CreateEventW, CreateMutexW, SetEvent};
+
+const INSTANCE_MUTEX: PCWSTR = w!("Local\\Lernzeit");
+const RESTORE_EVENT: PCWSTR = w!("Local\\Lernzeit.Restore");
 
 fn main() -> eframe::Result {
-    // One copy at a time; a second launch brings the first one forward.
-    unsafe {
-        let _instance = CreateMutexW(None, true, w!("Local\\Lernzeit"));
-        if GetLastError() == ERROR_ALREADY_EXISTS {
-            if let Ok(window) = FindWindowW(None, w!("Lernzeit")) {
-                let _ = ShowWindow(window, SW_SHOW);
-                let _ = ShowWindow(window, SW_RESTORE);
-                let _ = SetForegroundWindow(window);
-            }
-            return Ok(());
+    // The event asks the existing egui instance to restore its own viewport, which
+    // clears any pending close request as well as showing the native window.
+    let restore_event = unsafe { CreateEventW(None, false, false, RESTORE_EVENT) }.expect("restore event");
+    // Keep this handle alive for the full eframe run so later launches find this instance.
+    let instance = unsafe { CreateMutexW(None, true, INSTANCE_MUTEX) }.expect("instance mutex");
+    if unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
+        unsafe {
+            let _ = SetEvent(restore_event);
+            let _ = CloseHandle(restore_event);
+            let _ = CloseHandle(instance);
         }
+        return Ok(());
     }
 
     let mut store = store::Store::open();
@@ -58,5 +61,10 @@ fn main() -> eframe::Result {
             .with_visible(!hidden),
         ..Default::default()
     };
-    eframe::run_native("Lernzeit", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, core)))))
+    let result = eframe::run_native("Lernzeit", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, core, restore_event)))));
+    unsafe {
+        let _ = CloseHandle(restore_event);
+        let _ = CloseHandle(instance);
+    }
+    result
 }

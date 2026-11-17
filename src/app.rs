@@ -11,6 +11,8 @@ use eframe::egui::{self, Align2, Color32, Key, Pos2, Rect, Sense, Stroke, Ui, Ve
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0};
+use windows::Win32::System::Threading::{OpenEventW, SetEvent, WaitForSingleObject, INFINITE, SYNCHRONIZATION_SYNCHRONIZE};
 
 #[derive(Clone, Copy, PartialEq)]
 enum Page {
@@ -39,15 +41,35 @@ pub struct App {
     /// Heights of the timer and of the cards under it, measured in the previous frame.
     timer_height: f32,
     bottom_height: f32,
+    pending_music: Option<(bool, std::time::Instant)>,
+    restore_event: HANDLE,
+    restore_listener: Option<std::thread::JoinHandle<()>>,
 }
 
 impl App {
-    pub fn new(cc: &eframe::CreationContext, core: Arc<Mutex<Core>>) -> Self {
+    pub fn new(cc: &eframe::CreationContext, core: Arc<Mutex<Core>>, restore_event: HANDLE) -> Self {
         theme::install_fonts(&cc.egui_ctx);
         let ctx = cc.egui_ctx.clone();
         let remote = crate::spotify::start(core.clone(), move || ctx.request_repaint());
         let quitting = Arc::new(AtomicBool::new(false));
         let tray = tray::Tray::new(cc.egui_ctx.clone(), core.clone(), remote.clone(), quitting.clone());
+        let restore_context = cc.egui_ctx.clone();
+        let restore_quitting = quitting.clone();
+        let restore_listener = std::thread::spawn(move || {
+            let Ok(event) = (unsafe { OpenEventW(SYNCHRONIZATION_SYNCHRONIZE, false, crate::RESTORE_EVENT) }) else {
+                return;
+            };
+            loop {
+                if unsafe { WaitForSingleObject(event, INFINITE) } != WAIT_OBJECT_0 {
+                    break;
+                }
+                if restore_quitting.load(Ordering::Relaxed) {
+                    break;
+                }
+                tray::restore_window(&restore_context);
+            }
+            unsafe { let _ = CloseHandle(event); }
+        });
         Self {
             core,
             remote,
@@ -60,11 +82,15 @@ impl App {
             tooltip: String::new(),
             timer_height: 230.0,
             bottom_height: 220.0,
+            pending_music: None,
+            restore_event,
+            restore_listener: Some(restore_listener),
         }
     }
 
-    fn send(&self, command: Option<Command>) {
+    fn send(&mut self, command: Option<Command>) {
         if let Some(command) = command {
+            self.pending_music = Some((command == Command::Play, std::time::Instant::now() + std::time::Duration::from_secs(4)));
             self.remote.send(command);
         }
     }
@@ -94,6 +120,10 @@ impl eframe::App for App {
         if ctx.input(|i| i.viewport().close_requested()) && !self.quitting.load(Ordering::Relaxed) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+        }
+        let actual_playing = self.core.lock().unwrap().playing;
+        if self.pending_music.is_some_and(|(wanted, until)| actual_playing == wanted || std::time::Instant::now() >= until) {
+            self.pending_music = None;
         }
         if self.page != Page::Settings && ctx.input(|i| i.key_pressed(Key::Space)) {
             let command = self.core.lock().unwrap().toggle(now);
@@ -127,6 +157,11 @@ impl eframe::App for App {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.quitting.store(true, Ordering::Relaxed);
+        unsafe { let _ = SetEvent(self.restore_event); }
+        if let Some(listener) = self.restore_listener.take() {
+            let _ = listener.join();
+        }
         self.core.lock().unwrap().shutdown(now());
     }
 }
@@ -167,6 +202,8 @@ impl App {
         let playing = core.playing;
         let track = core.track.clone();
         drop(core);
+
+        let playing = self.pending_music.map_or(playing, |(wanted, _)| wanted);
 
         let today = stats::study_day(now);
         let week: Ms = (0..7).map(|i| days.get(&(stats::monday(today) + Duration::days(i))).copied().unwrap_or(0)).sum();
@@ -408,7 +445,7 @@ impl App {
                 }
             }
         });
-        let dir = core.store.dir().clone();
+        let dir = core.store.dir().to_path_buf();
         drop(core);
 
         theme::section(ui, t, "ALLGEMEIN");
