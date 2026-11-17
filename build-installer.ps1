@@ -7,13 +7,14 @@ try {
         if ($command) { $Iscc = $command.Source }
         else {
             $Iscc = @(
+                "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+                "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
                 "$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe",
-                "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
-                "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+                "$env:ProgramFiles\Inno Setup 7\ISCC.exe"
             ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
         }
     }
-    if (-not $Iscc) { throw 'Install Inno Setup 7, or pass -Iscc with the path to ISCC.exe.' }
+    if (-not $Iscc) { throw 'Install Inno Setup 6.7.4 or newer, or pass -Iscc with the path to ISCC.exe.' }
     $manifest = Get-Content Cargo.toml -Raw
     $version = [regex]::Match($manifest, '(?m)^version\s*=\s*"(\d+\.\d+\.\d+)"').Groups[1].Value
     if (-not $version) { throw 'Could not read the version from Cargo.toml.' }

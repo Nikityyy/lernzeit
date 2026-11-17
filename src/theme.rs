@@ -83,8 +83,24 @@ pub fn light(size: f32) -> FontId {
 
 /// Uses Windows' own UI font. Falls back to egui's font if a file is missing.
 pub fn install_fonts(ctx: &egui::Context) {
-    let mut fonts = egui::FontDefinitions::default();
     let dir = std::env::var_os("WINDIR").map(std::path::PathBuf::from).unwrap_or_default().join("Fonts");
+    ctx.set_fonts(font_definitions(&dir));
+}
+
+fn font_definitions(dir: &std::path::Path) -> egui::FontDefinitions {
+    let mut fonts = egui::FontDefinitions::empty();
+    let fallback = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
+        include_bytes!("../assets/fonts/Ubuntu-Light.ttf.zlib"), 512 * 1024,
+    ).expect("The bundled fallback font is invalid");
+    fonts.font_data.insert("Ubuntu-Light".into(), Arc::new(egui::FontData::from_owned(fallback)));
+    fonts.font_data.insert("egui-icons".into(), Arc::new(
+        egui::FontData::from_static(epaint_default_fonts::EGUI_ICONS).tweak(egui::FontTweak {
+            scale: 0.90, ..Default::default()
+        }),
+    ));
+    let fallback = vec!["Ubuntu-Light".to_owned(), "egui-icons".to_owned()];
+    fonts.families.insert(FontFamily::Proportional, fallback.clone());
+    fonts.families.insert(FontFamily::Monospace, fallback);
     let mut load = |name: &str, file: &str| -> Option<String> {
         let bytes = std::fs::read(dir.join(file)).ok()?;
         fonts.font_data.insert(name.to_owned(), Arc::new(egui::FontData::from_owned(bytes)));
@@ -98,7 +114,7 @@ pub fn install_fonts(ctx: &egui::Context) {
     fonts.families.insert(FontFamily::Proportional, family(regular.clone()));
     fonts.families.insert(FontFamily::Name("semibold".into()), family(semibold.or(regular.clone())));
     fonts.families.insert(FontFamily::Name("light".into()), family(light.or(regular)));
-    ctx.set_fonts(fonts);
+    fonts
 }
 
 pub fn card(ui: &mut Ui, t: &Theme, add: impl FnOnce(&mut Ui)) {
@@ -313,4 +329,31 @@ pub fn fit(ui: &Ui, text: &str, font: FontId, width: f32) -> String {
         if measure(&candidate) <= width { lo = mid } else { hi = mid - 1 }
     }
     chars[..lo].iter().collect::<String>().trim_end().to_owned() + "…"
+}
+
+
+#[cfg(test)]
+mod font_tests {
+    use super::*;
+
+    #[test]
+    fn bundled_fallback_renders_without_windows_fonts() {
+        // A machine without the Segoe files must still have readable controls.
+        let fonts = font_definitions(std::path::Path::new(""));
+        let context = egui::Context::default();
+        context.set_fonts(fonts);
+        let mut output = context.run_pass(Default::default(), |ctx| {
+            ctx.fonts_mut(|fonts| {
+                for font in [regular(15.0), semibold(15.0), light(34.0), FontId::monospace(13.0)] {
+                    let text = "Lernzeit · Zurück · ÄÖÜ äöü ß · 12:34".to_owned();
+                    assert!(fonts.has_glyphs(&font, &text), "Missing glyphs in {font:?}");
+                    let galley = fonts.layout_no_wrap(text.clone(), font, Color32::WHITE);
+                    assert_eq!(galley.text(), text);
+                    assert!(galley.size().x > 100.0 && galley.size().y > 10.0);
+                }
+            });
+        });
+        // This headless check has no GPU to consume the generated font texture.
+        output.textures_delta.clear();
+    }
 }

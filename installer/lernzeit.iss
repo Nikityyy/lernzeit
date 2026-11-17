@@ -31,7 +31,7 @@ SetupMutex=Local\LernzeitSetup
 CloseApplications=no
 RestartApplications=no
 Uninstallable=yes
-Compression=lzma2
+Compression=lzma2/ultra64
 SolidCompression=yes
 OutputDir=..\target\installer
 OutputBaseFilename=Lernzeit-Setup-{#AppVersion}
@@ -68,6 +68,7 @@ Type: files; Name: "{userdesktop}\Lernzeit.lnk"; Tasks: not desktopicon
 [Files]
 Source: "..\target\release\lernzeit.exe"; DestDir: "{app}"; DestName: "Lernzeit.exe"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\fonts\LICENSE.txt"; DestDir: "{app}"; DestName: "FONT-LICENSE.txt"; Flags: ignoreversion
 
 [Icons]
 Name: "{userprograms}\Lernzeit"; Filename: "{app}\Lernzeit.exe"; WorkingDir: "{app}"
